@@ -13,18 +13,18 @@ import logging
 import os
 import yaml
 
-from ipatokenizer import IpaTokenizer
-from bpetokenizer import BPETokenizer
-from unigramtokenizer import UnigramTokenizer
-from chartokenizer import CharTokenizer
-from wordpiecetokenizer import WordPieceTokenizer
-from bytetokenizer import ByteTokenizer  
+from tokenizer.ipatokenizer import IpaTokenizer
+from tokenizer.bpetokenizer import BPETokenizer
+from tokenizer.unigramtokenizer import UnigramTokenizer
+from tokenizer.chartokenizer import CharTokenizer
+from tokenizer.wordpiecetokenizer import WordPieceTokenizer
+from tokenizer.bytetokenizer import ByteTokenizer  
 
-from ebilstm import EnhancedBiLSTMClassifier
-from bilstm import BiLSTMClassifier
-from bigru import BiGRUClassifier
-from transformer import TransformerClassifier
-from textcnn import TextCNN
+from model.ebilstm import EnhancedBiLSTMClassifier
+from model.bilstm import BiLSTMClassifier
+from model.bigru import BiGRUClassifier
+from model.transformer import TransformerClassifier
+from model.textcnn import TextCNN
 
 from dataset import GLUEDataset
 
