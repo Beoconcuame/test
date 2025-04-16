@@ -2,10 +2,15 @@
 
 ## Installation and Setup
 
-To download the mapping file, run the following command in your terminal:
-
+To download the mapping file and  processed GLUE data, run the following command in your terminal:
+For pre-processed GLUE data
 ```bash
-gdown https://drive.google.com/uc?id=1XzLzIvsPZ6wvCOHj_uhnwVJD4rIVnm_T
+gdown --folder https://drive.google.com/drive/folders/1K2nzP_PD8639ffX3GtDwJGCdWGNOsEBc
+
+```
+For mapping word to ipa 
+``` bash
+gdown https://drive.google.com/uc?id=1anM1SfUqLnIZ2DhrGCvw9YIND5tVwZk_
 
 ```
 
