@@ -3,32 +3,41 @@ from torch.utils.data import Dataset
 import os
 import logging
 from datasets import load_dataset, disable_caching
-import numpy as np
-disable_caching()
+
 from tokenizer.unigramtokenizer import UnigramTokenizer
 from tokenizer.bpetokenizer import BPETokenizer
 from tokenizer.wordpiecetokenizer import WordPieceTokenizer
 from tokenizer.ipatokenizer2 import IpaTokenizer
 from tokenizer.chartokenizer import CharTokenizer
+from tokenizer.bytetokenizer import ByteTokenizer
 
-
-
+disable_caching()
 logger = logging.getLogger(__name__)
 
 class GLUEDataset(Dataset):
-    """PyTorch Dataset for GLUE tasks supporting custom tokenizers."""
+    """PyTorch Dataset for GLUE tasks supporting only custom tokenizers."""
+
+    _ALLOWED_TOKENIZERS = (
+        UnigramTokenizer,
+        BPETokenizer,
+        WordPieceTokenizer,
+        IpaTokenizer,
+        CharTokenizer,
+        ByteTokenizer,
+    )
 
     def __init__(self, split: str, tokenizer, max_len: int, task: str, dataset_path: str | None = None):
+        if not isinstance(tokenizer, self._ALLOWED_TOKENIZERS):
+            raise TypeError(
+                f"Tokenizer phải là instance của một trong các lớp {', '.join(c.__name__ for c in self._ALLOWED_TOKENIZERS)}; "
+                f"nhưng nhận được {type(tokenizer).__name__}"
+            )
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.task = task
         self.split = split
 
-        self.is_unigram_tok = isinstance(tokenizer, UnigramTokenizer)
-        self.is_bpe_tok = isinstance(tokenizer, BPETokenizer)
-        self.is_wordpiece_tok = isinstance(tokenizer, WordPieceTokenizer)
-        self.is_ipa_tok = IpaTokenizer is not None and isinstance(tokenizer, IpaTokenizer)
-        self.is_char_tok = CharTokenizer is not None and isinstance(tokenizer, CharTokenizer)
+        self.is_ipa_tok = isinstance(tokenizer, IpaTokenizer)
 
         logger.info(
             f"Dataset init ▸ task={task} | split={split} | max_len={max_len} | tok={type(tokenizer).__name__}"
@@ -49,12 +58,10 @@ class GLUEDataset(Dataset):
 
         self.text_keys = self._get_text_keys(task)
         self.label_key = "label"
-        if task == "stsb":
-            self.num_classes = 1
-        else:
-            self.num_classes = (
-                self.dataset.features[self.label_key].num_classes if self.label_key in self.dataset.features else 2
-            )
+        self.num_classes = 1 if task == "stsb" else (
+            self.dataset.features[self.label_key].num_classes
+            if self.label_key in self.dataset.features else 2
+        )
 
     @staticmethod
     def _get_text_keys(task: str) -> list[str]:
@@ -82,20 +89,24 @@ class GLUEDataset(Dataset):
         text_pair = sample[self.text_keys[1]] if len(self.text_keys) > 1 else None
         combined = text if text_pair is None else f"{text} {text_pair}"
 
-        if hasattr(self.tokenizer, "tokenize_text"):
-            ids = self.tokenizer.tokenize_text(combined, seq_length=self.max_len)
-        else:
-            raise TypeError(f"Tokenizer {type(self.tokenizer).__name__} lacks `tokenize_text`.")
+        ids = self.tokenizer.tokenize_text(combined, seq_length=self.max_len)
 
         pad_id = getattr(self.tokenizer, "pad_id", 0)
-        ids = ids + [pad_id] * (self.max_len - len(ids)) if len(ids) < self.max_len else ids[: self.max_len]
+        if len(ids) < self.max_len:
+            ids = ids + [pad_id] * (self.max_len - len(ids))
+        else:
+            ids = ids[: self.max_len]
 
         input_ids = torch.tensor(ids, dtype=torch.long)
         attention_mask = torch.tensor([1 if t != pad_id else 0 for t in ids], dtype=torch.long)
 
-        if self.is_ipa_tok and hasattr(self.tokenizer, "customize_positions"):
+        if self.is_ipa_tok:
             pos = self.tokenizer.customize_positions(combined, seq_length=self.max_len)
-            pos = pos + [getattr(self.tokenizer, "pad_pos_id", 0)] * (self.max_len - len(pos)) if len(pos) < self.max_len else pos[: self.max_len]
+            pad_pos_id = getattr(self.tokenizer, "pad_pos_id", 0)
+            if len(pos) < self.max_len:
+                pos = pos + [pad_pos_id] * (self.max_len - len(pos))
+            else:
+                pos = pos[: self.max_len]
             aux = torch.tensor(pos, dtype=torch.long)
         else:
             aux = attention_mask
