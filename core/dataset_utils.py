@@ -2,7 +2,7 @@ import os
 import sys
 import logging
 from torch.utils.data import DataLoader
-from dataset import GLUEDataset
+from core.dataset import GLUEDataset
 
 logger = logging.getLogger(__name__)
 
