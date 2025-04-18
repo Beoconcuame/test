@@ -11,6 +11,8 @@ class UnigramTokenizer:
         self.tokenizer.train_from_iterator(train_sentences, trainer=trainer)
         self.vocab = self.tokenizer.get_vocab()
         self.pad_id = self.vocab["<PAD>"]
+        self.unk_id = self.vocab["<UNK>"]
+        self.vocab_size = vocab_size
 
     def tokenize_text(self, text, seq_length=None):
         tokens = self.tokenizer.encode(text).ids
@@ -23,3 +25,5 @@ class UnigramTokenizer:
                 tokens = tokens[:seq_length]
         
         return tokens
+    def get_vocab_size(self):
+        return self.vocab_size
