@@ -1,0 +1,41 @@
+# config.yaml (Phần cần kiểm tra/sửa)
+
+# --- Chế độ chạy và Task ---
+run_mode: train         # Phải là train để chạy HPO dựa trên val metric
+task: cola              # <-- ĐẶT TASK BẠN MUỐN TỐI ƯU Ở ĐÂY
+
+# --- Tokenizer ---
+# tokenizer: ...        # Giá trị này sẽ bị optimize.py ghi đè
+vocab_file: ./full.csv  # Đảm bảo đúng đường dẫn nếu định thử 'ipa'
+
+# --- Model ---
+# model: ...            # Giá trị này sẽ bị optimize.py ghi đè
+
+# --- Đường dẫn ---
+dataset_path: ./data/   # Đảm bảo đúng đường dẫn
+# checkpoint_path: ...  # optimize.py sẽ tự tạo đường dẫn riêng cho mỗi trial
+# log_file: ...         # optimize.py sẽ tự tạo đường dẫn riêng cho mỗi trial
+
+# --- Huấn luyện ---
+# max_len: ...          # Sẽ bị optimize.py ghi đè
+# batch_size: ...       # Sẽ bị optimize.py ghi đè
+epochs: 50              # <-- Đặt giá trị đủ lớn
+# lr: ...               # Sẽ bị optimize.py ghi đè
+# weight_decay: ...     # Sẽ bị optimize.py ghi đè
+# patience: ...         # Sẽ bị optimize.py ghi đè
+# resume: false         # HPO thường không resume
+
+# --- Scheduler ---
+# scheduler_patience: ..# Sẽ bị optimize.py ghi đè
+# scheduler_factor: ..  # Sẽ bị optimize.py ghi đè
+
+# --- Model Hyperparameters ---
+# model_params:         # Các giá trị ở đây sẽ bị optimize.py ghi đè
+  # custom_pos_vocab_size: 8 # Vẫn cần giá trị gốc nếu optimize.py không tối ưu nó
+
+# --- Optuna Settings (Tùy chọn - thêm vào config.yaml) ---
+optuna_study_name: HPO_MRPC_Study # Tên study (sẽ tự tạo nếu không có)
+optuna_n_trials: 100             # Số lần thử nghiệm tối đa
+optuna_storage: sqlite:///HPO_MRPC_Study.db # Lưu kết quả vào DB (khuyến nghị)
+# optuna_timeout: 14400          # Timeout tổng cho study (ví dụ 4 giờ = 14400 giây)
+seed: 42                         # Seed gốc (optimize.py sẽ dùng seed khác cho mỗi trial)
