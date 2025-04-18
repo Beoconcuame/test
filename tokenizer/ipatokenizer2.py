@@ -243,7 +243,8 @@ class IpaTokenizer:
             elif current_len > seq_length:
                 positions = positions[:seq_length]
         return positions
-
+    def get_vocab_size(self) -> int:
+        return len(self.token2idx)
     def export_mapping(self, output_file: str):
         with open(output_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
