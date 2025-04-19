@@ -72,14 +72,7 @@ def _model_search_space(trial: optuna.Trial, common: Dict[str, Any]) -> Dict[str
         ff_map = {128: [256, 512], 256: [512, 1024], 512: [1024, 2048]}
         dim_ff = trial.suggest_categorical(f"dim_feedforward_{d_model}", ff_map[d_model])
         layers = trial.suggest_int("num_layers_tf", 2, 6)
-        p.update(
-            {
-                "d_model": d_model,
-                "nhead": nhead,
-                "num_layers": layers,
-                "dim_feedforward": dim_ff,
-            }
-        )
+        p.update({"d_model": d_model, "nhead": nhead, "num_layers": layers, "dim_feedforward": dim_ff})
     elif "textcnn" in model_name:
         p.update(
             embedding_dim=trial.suggest_categorical("embedding_dim_cnn", [128, 256, 300]),
@@ -93,7 +86,7 @@ def _model_search_space(trial: optuna.Trial, common: Dict[str, Any]) -> Dict[str
             num_layers=trial.suggest_int("num_layers_ebilstm", 1, 4),
         )
     else:
-        logger.warning("Model %s is not supported", model_name)
+        logger.warning(f"Model {model_name} is not supported")
 
     common.update({"model": model_name, "model_params": p})
     return common
@@ -106,7 +99,7 @@ def build_search_space(trial: optuna.Trial, base_cfg: Dict[str, Any]) -> Dict[st
 
 def _objective(trial: optuna.Trial) -> float:
     idx = trial.number
-    logger.info("Trial %d start", idx)
+    logger.info(f"Trial {idx} start")
     base_cfg = yaml.safe_load(open(BASE_CONFIG_PATH, encoding="utf-8")) or {}
     params = build_search_space(trial, base_cfg)
     cfg = _recursive_update(copy.deepcopy(base_cfg), params)
@@ -115,33 +108,35 @@ def _objective(trial: optuna.Trial) -> float:
     cfg["checkpoint_path"] = os.path.join("checkpoints", f"{base_name}.pth")
     cfg["log_file"] = os.path.join("logs", f"results_{base_name}.txt")
 
+    # initial run
     metric = run_experiment(config=cfg, trial=trial) or 0.0
-if metric == 0.0:
-    logger.warning(f"Metric is zero for trial {idx}, trying additional hyperparameter sets")
-    fallback_configs = [
-        {"lr": 1e-4, "batch_size": 32, "dropout": 0.1},
-        {"lr": 5e-5, "batch_size": 64, "dropout": 0.2},
-        {"lr": 1e-3, "batch_size": 16, "dropout": 0.3},
-    ]
-    for fb in fallback_configs:
-        fb_params = params.copy()
-        fb_params.update(fb)
-        cfg_fb = _recursive_update(copy.deepcopy(base_cfg), fb_params)
-        cfg_fb.update({"run_mode": "train", "seed": idx, "epochs": base_cfg.get("epochs", 40), "resume": False})
-        cfg_fb["checkpoint_path"] = cfg["checkpoint_path"]
-        cfg_fb["log_file"] = cfg["log_file"].replace('.txt', f'_fb_{fb["lr"]}.txt')
-        metric = run_experiment(config=cfg_fb, trial=trial) or 0.0
-        if metric > 0.0:
-            logger.info(f"Fallback succeeded for trial {idx} with config {fb}")
-            break
-return float(metric)
+    if metric == 0.0:
+        logger.warning(f"Metric is zero for trial {idx}, retrying with alternate sets")
+        fallback_sets = [
+            {"lr": 1e-4, "batch_size": 32, "dropout": 0.1},
+            {"lr": 5e-5, "batch_size": 64, "dropout": 0.2},
+            {"lr": 1e-3, "batch_size": 16, "dropout": 0.3},
+            {"lr": 2e-4, "batch_size": 32, "dropout": 0.25},
+        ]
+        for fb in fallback_sets:
+            fb_params = params.copy()
+            fb_params.update(fb)
+            cfg_fb = _recursive_update(copy.deepcopy(base_cfg), fb_params)
+            cfg_fb.update({"run_mode": "train", "seed": idx, "epochs": base_cfg.get("epochs", 40), "resume": False})
+            cfg_fb["checkpoint_path"] = cfg["checkpoint_path"]
+            cfg_fb["log_file"] = cfg["log_file"].replace('.txt', f'_fb_{fb["lr"]}.txt')
+            metric = run_experiment(config=cfg_fb, trial=trial) or 0.0
+            if metric > 0.0:
+                logger.info(f"Successful fallback for trial {idx} with {fb}")
+                break
+    return float(metric)
 
 
 if __name__ == "__main__":
     base_cfg = yaml.safe_load(open(BASE_CONFIG_PATH, encoding="utf-8")) or {}
     study = optuna.create_study(direction="maximize")
     study.optimize(_objective, n_trials=50)
-    logger.info("Best trial %d: %s", study.best_trial.number, study.best_trial.params)
+    logger.info(f"Best trial {study.best_trial.number}: {study.best_trial.params}")
 
     best_cfg = copy.deepcopy(base_cfg)
     best_cfg = _recursive_update(best_cfg, study.best_trial.params)
@@ -149,4 +144,4 @@ if __name__ == "__main__":
     os.makedirs(os.path.dirname(out_yaml) or ".", exist_ok=True)
     with open(out_yaml, "w", encoding="utf-8") as fh:
         yaml.dump(best_cfg, fh, allow_unicode=True, sort_keys=False)
-    logger.info("Best config saved to %s", out_yaml)
+    logger.info(f"Best config saved to {out_yaml}")
