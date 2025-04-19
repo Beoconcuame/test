@@ -98,7 +98,7 @@ def train_model_fn(
             optimizer.step()
 
         processed += 1
-        batch_loss = loss.item()
+        batch_loss = loss.detach().item()
         total_loss += batch_loss
 
         if processed % max(1, len(train_loader) // 10) == 0 or processed == len(train_loader):
